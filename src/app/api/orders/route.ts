@@ -53,3 +53,30 @@ export async function POST(req: NextRequest) {
 
   return ok(newOrder, 201);
 }
+
+export async function PATCH(req: NextRequest) {
+  const body = await req.json();
+  const { id, status } = body;
+
+  if (!id || !status) {
+    return err('id and status are required.', 422);
+  }
+
+  const validStatuses = ['pending', 'confirmed', 'in_transit', 'delivered'];
+  if (!validStatuses.includes(status)) {
+    return err(`Invalid status. Must be one of: ${validStatuses.join(', ')}`, 422);
+  }
+
+  const order = orders.find(o => o.id === id);
+  if (!order) return err('Order not found.', 404);
+
+  order.status = status;
+
+  // If delivered, mark listing as sold
+  if (status === 'delivered') {
+    const listing = listings.find(l => l.id === order.listingId);
+    if (listing) listing.status = 'sold';
+  }
+
+  return ok(order);
+}

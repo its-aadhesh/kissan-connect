@@ -21,9 +21,9 @@ Multiple intermediaries reduce farmer earnings and inflate consumer prices.
 |---|---|---|
 | `/` | `src/app/page.tsx` | Main landing page — Hero, Explore cards, CTA |
 | `/how-it-works` | `src/app/how-it-works/page.tsx` | Platform feature bento grid (Toll-Free IVR, B2C/B2B, AI Demand, Route Optimization) |
-| `/ai-logistics` | `src/app/ai-logistics/page.tsx` | HUB model walkthrough + Live admin dashboard mock |
+| `/ai-logistics` | `src/app/ai-logistics/page.tsx` | Interactive AI Logistics & HUB Command Center — live vehicle dispatch, cold-chain IoT telematics, order fulfillment, and regional HUB capacity monitoring |
 | `/impact` | `src/app/impact/page.tsx` | +40% farmer earnings, -20% consumer prices, -35% food waste — with CSS bar charts |
-| `/signin` | `src/app/signin/page.tsx` | Interactive sign-in — role selector (Farmer / Customer / Logistics) connected to `POST /api/auth/login` |
+| `/signin` | `src/app/signin/page.tsx` | Interactive sign-in — 1-click role selector (Farmer / Customer / Logistics) connected to `POST /api/auth/login` |
 | `/join` | `src/app/join/page.tsx` | Role selection onboarding connected to `POST /api/auth/register` |
 | `/farmer` | `src/app/farmer/page.tsx` | Farmer Dashboard — manage listings, real-time CRUD, voice IVR simulation, orders tracker |
 | `/marketplace` | `src/app/marketplace/page.tsx` | Customer Marketplace — produce discovery, live filters, instant checkout modal to `POST /api/orders`, My Orders tab |
@@ -31,7 +31,7 @@ Multiple intermediaries reduce farmer earnings and inflate consumer prices.
 
 ### Design System
 - **Primary color:** `emerald-600` (#059669)
-- **Background:** `slate-50` / `white`
+- **Background:** `slate-50` / `white` (for public/marketplace/farmer) & `slate-900` (for logistics command center)
 - **Border radius:** `rounded-3xl` for cards, `rounded-full` for buttons
 - **Shadows:** `shadow-lg shadow-emerald-600/20` on CTAs
 - **Animations:** `hover:-translate-y-1`, `group-hover:scale-110`, `animate-pulse`
@@ -41,7 +41,7 @@ Multiple intermediaries reduce farmer earnings and inflate consumer prices.
 ## 2. Backend — Mock API (Live & Scalable)
 
 All routes live at `src/app/api/` inside the Next.js App Router.  
-**Architecture:** Mock in-memory DB in `src/lib/mockDb.ts` → swap for Supabase with **zero changes** to route handlers.
+**Architecture:** Mock in-memory DB in `src/lib/mockDb.ts` + Supabase client in `src/lib/supabase.ts`.
 
 ### API Endpoints
 
@@ -55,105 +55,42 @@ All routes live at `src/app/api/` inside the Next.js App Router.
 | `PATCH` | `/api/listings/:id` | Update listing status (available → reserved → sold) |
 | `GET` | `/api/orders` | Get all orders. Query: `?customerId=u2&status=pending` |
 | `POST` | `/api/orders` | Customer places an order (auto-marks listing as reserved) |
+| `PATCH` | `/api/orders` | Update order status (`pending` → `in_transit` → `delivered`) |
 | `GET` | `/api/logistics/routes` | Get active AI-optimized delivery routes |
+| `POST` | `/api/logistics/routes` | Dispatch a new AI multi-stop route |
+| `PATCH` | `/api/logistics/routes` | Update route GPS progress and completion status |
 | `GET` | `/api/users` | List all users. Query: `?role=farmer` |
 
-### Uniform Response Shape
-```json
-// Success
-{ "success": true, "data": { ... } }
+---
 
-// Error  
-{ "success": false, "error": "Reason here." }
-```
+## 3. Database — CREATED & SEEDED IN SUPABASE
 
-### Key Library Files
-| File | Purpose |
-|---|---|
-| `src/lib/mockDb.ts` | Central in-memory data store + TypeScript interfaces for all models |
-| `src/lib/apiResponse.ts` | `ok()` and `err()` helpers for consistent response shape |
+Supabase project `its-aadhesh's Project` (`mbnwtelvfzjofeeviutg`) is restored and **ACTIVE_HEALTHY**.
+Tables have been created and seeded via Supabase MCP:
+- `public.profiles` (Users & roles)
+- `public.listings` (Farmer produce listings)
+- `public.orders` (Customer direct orders)
+- `public.routes` (AI-optimized fleet routes)
+
+Environment variables are set in `.env.local`, and `@supabase/supabase-js` is installed with client configured in `src/lib/supabase.ts`.
 
 ---
 
-## 3. Database — NOT YET CREATED
+## 5. Completed & Next Steps
 
-Supabase is connected via MCP in Antigravity. **No tables have been created yet.**
-
-### Planned Supabase Schema (SQL ready to apply)
-
-```sql
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  phone TEXT,
-  role TEXT CHECK (role IN ('farmer', 'customer', 'logistics', 'admin')) NOT NULL,
-  location TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE listings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  farmer_id UUID REFERENCES profiles(id),
-  farmer_name TEXT,
-  produce TEXT NOT NULL,
-  quantity NUMERIC NOT NULL,
-  price_per_kg NUMERIC NOT NULL,
-  location TEXT,
-  status TEXT CHECK (status IN ('available', 'reserved', 'sold')) DEFAULT 'available',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  customer_id UUID REFERENCES profiles(id),
-  listing_id UUID REFERENCES listings(id),
-  produce TEXT,
-  quantity_kg NUMERIC,
-  total_price NUMERIC,
-  status TEXT CHECK (status IN ('pending', 'confirmed', 'in_transit', 'delivered')) DEFAULT 'pending',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE routes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  driver_id UUID REFERENCES profiles(id),
-  from_location TEXT,
-  to_location TEXT,
-  produce TEXT,
-  saving_km NUMERIC,
-  progress NUMERIC DEFAULT 0,
-  status TEXT CHECK (status IN ('active', 'completed')) DEFAULT 'active'
-);
-```
-
----
-
-## 4. Supabase Migration Path (Mock → Real)
-
-1. **Apply the SQL schema** above via Supabase MCP tool: `apply_migration`
-2. **Install client:** `npm install @supabase/supabase-js`
-3. **Create `src/lib/supabase.ts`:**
-   ```ts
-   import { createClient } from '@supabase/supabase-js';
-   export const supabase = createClient(
-     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-     process.env.SUPABASE_SERVICE_ROLE_KEY!
-   );
-   ```
-4. **Swap route handlers** — each API file has a `SUPABASE SWAP:` comment with the exact query. Response shapes stay identical.
-5. **Auth:** Replace mock JWT with `supabase.auth.signUp()` / `signInWithPassword()`
-
----
-
-## 5. Pending / Next Steps
-
-### Frontend
+### Frontend (100% Completed)
 - [x] Connect Sign In form to `POST /api/auth/login`
 - [x] Connect Join form to `POST /api/auth/register`
-- [x] Build Farmer Dashboard — list & manage produce listings
-- [x] Build Customer Marketplace — browse listings, place orders
-- [x] Add mobile hamburger menu for navbar
+- [x] Build Farmer Dashboard — list & manage produce listings, IVR simulation, order tracking
+- [x] Build Customer Marketplace — browse listings, place direct orders, live cart & checkout
+- [x] Build AI Logistics & HUB Command Center (`/ai-logistics`) — live route dispatch, truck progress simulator, IoT cold-chain telematics, order fulfillment, and DoCA regional hub capacity monitoring
+- [x] Add mobile hamburger menu & role-aware navigation in `Navbar.tsx`
+
+### Database (Created via MCP)
+- [x] Restore Supabase project from inactive status
+- [x] Apply schema for `profiles`, `listings`, `orders`, `routes` via Supabase MCP
+- [x] Seed initial data into Supabase
+- [x] Configure `.env.local` and `src/lib/supabase.ts`
 
 ### Backend
 - [ ] Add real JWT signing with `jose` library

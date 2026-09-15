@@ -114,6 +114,16 @@ export default function Navbar() {
                   </Link>
                 )}
 
+                {user.role === 'logistics' && pathname !== '/ai-logistics' && (
+                  <Link
+                    href="/ai-logistics"
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-full font-medium text-xs shadow-sm transition-all flex items-center gap-1.5"
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    Fleet Hub
+                  </Link>
+                )}
+
                 <button
                   onClick={handleSignOut}
                   title="Sign Out"
@@ -234,20 +244,27 @@ export default function Navbar() {
               </Link>
             </div>
           ) : (
-            <div className="pt-2 grid grid-cols-2 gap-2">
+            <div className="pt-2 grid grid-cols-3 gap-2">
               <Link
                 href="/farmer"
                 onClick={() => setIsOpen(false)}
-                className="text-center py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold"
+                className="text-center py-2 px-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-semibold"
               >
-                Farmer Dashboard
+                Farmer Hub
               </Link>
               <Link
                 href="/marketplace"
                 onClick={() => setIsOpen(false)}
-                className="text-center py-2 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold"
+                className="text-center py-2 px-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-semibold"
               >
                 Marketplace
+              </Link>
+              <Link
+                href="/ai-logistics"
+                onClick={() => setIsOpen(false)}
+                className="text-center py-2 px-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-semibold"
+              >
+                Logistics Hub
               </Link>
             </div>
           )}
